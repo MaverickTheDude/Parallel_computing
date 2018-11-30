@@ -3,7 +3,7 @@
 
 const int N = 5;
 #define PAD 16					// 64 B L1 Cache line size (anti false sharing trick)
-const int inner_steps = 1000000;
+const int steps = 1000000;
 
 double f(double x) {
 	return 4.0 / (1.0 + x * x);
@@ -11,7 +11,7 @@ double f(double x) {
 
 int main(void) {
 	const double delta = 1.0 / (double)N;
-	const double dx = delta / (double)inner_steps;
+	const double dx = N * delta / (double)steps;
 	int i, nthreads;
 	double sum = 0.0;
 	double xtab[N][PAD];
