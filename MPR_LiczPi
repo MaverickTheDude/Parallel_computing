@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <malloc.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdint.h> // (intptr_t)
+
+#define N 10000
+#define parts 4
+double dx = 1/(double)N;
+double sum = 0;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void* calculate(void* args) {
+	/* Hall of fame: jak nie robic przy tablicach
+	 * 	 * double tab[2] = (double) *args;
+	 * double x0 = *(double) args[0];
+	 * double xk = *(double) args[1];
+	 * LUB
+	 * double tab2;
+	 * tab2 = malloc(2*sizeof(tab2));
+	 * tab2 = (double) args;
+	 * WNIOSEK: tutaj tablice powinny byc typu wskaznikowego
+	 * */
+
+	/*Tak mozna odebrac skalary:
+	 * double x0 = *(double*)args;
+	 * int x0 = (int)args;
+	 * */
+
+	/* Druga opcja dla tablic (wskaznikowa)
+	 * double* first_entry = (double*)args;
+	 * double x0 = *first_entry;
+	 * double xk = *(first_entry+1);
+	 * */
+	/* Pierwsza opcja dla tablic:
+	 * double* tab;
+	 * tab = malloc(3*sizeof(tab));
+	 * tab = (double*)args;
+	 * */
+	int section = (int)(intptr_t)args;
+	double x0 = (1/(double)parts) * (double)section;
+	int status;
+
+	double x, y;
+	for (int i=0; i < N/parts; i++) {
+		x = x0 + dx*(double)i;
+		y = 4 / (1 + x*x);
+		status = pthread_mutex_lock(&mutex);
+		if (status) {
+			printf("Blad mutex-u, watek %d\n", section);
+			printf("BLAD: %s\n", strerror(status));
+			exit(EXIT_FAILURE);
+		}
+		sum += y;
+		status = pthread_mutex_unlock(&mutex);
+		if (status) {
+			printf("Blad mutex-u, watek %d\n", section);
+			printf("BLAD: %s\n", strerror(status));
+			exit(EXIT_FAILURE);
+		}
+	}
+	//pthread_exit( (void*)(intptr_t)pthread_self() );
+	pthread_exit(args); // Argumentem jest id watku
+}
+
+
+int main(void) {
+	int i, rc;
+	void* status;
+	pthread_t thread_id[parts];
+	//double input[2] = {x_pocz, inne_parametry};
+	/* Tablice - przesylamy wskaznik do pierwszego elementu: (void*)input
+	 * Skalary double - przesylamy zrzutowany adres: (void*)&input2
+	 * Skalary int - wystarczy samo rzutowanie (void*)input3   */
+	//double input2 = 0;
+	//int input3 = 0;
+
+	/* Utworz watki liczace swoja czesc funkcji */
+	for(i = 0; i < parts ; i++) {
+		rc = pthread_create(&thread_id[i], NULL , &calculate , (void*)(intptr_t)i );
+		//rc = pthread_create(& thread_id[i], &attr , &start_routine , (void*)(intptr_t)i);
+		/* W przypadku , gdy nie uda sie utworzyc watku */
+		if (rc) {
+			printf(" Blad. Kod powrotu z funkcji pthread create(): %d\n", rc);
+			exit(1);
+		}
+	}
+	/* Dolacz wszystkie watki */
+	for(i = 0; i < parts ; i++) {
+		rc = pthread_join( thread_id[i], &status );
+		if (rc) {
+			printf (" Blad . Kod powrotu z funkcji pthread join (): %d\n",rc);
+			exit(1);
+		}
+		printf(" Watek glowny dolaczyl watek %d o statusie %d\n", i, (int)(intptr_t)status );
+	}
+
+	double pi = sum*dx;
+	printf("pi = %f\n", pi);
+	return EXIT_SUCCESS;
+}
