@@ -27,20 +27,16 @@ int main(void) {
 			cout << "watek " << omp_get_thread_num() <<" i = " << i << endl;
 		suma[omp_get_thread_num()+1] = sum;
 	}
-
 	// this for-loop is also a commulative sum, but it has only Nthr iterations
 	for (int i=1; i<Nthr;i++)
 		suma[i] += suma[i-1];
-
 #pragma omp parallel for schedule(static)
 	for(int i=0; i< N; i++) {
 		a[i] += suma[omp_get_thread_num()];
 	}
-
 	for (int i=0; i<N; i++) {
 		cout << a[i] << endl;
 	}
-
 	delete[] suma;
 	int n = 95;
 	cout << a[n] << endl << n*(n+1)/2 << endl;
@@ -48,8 +44,7 @@ int main(void) {
 	return 0;*/
 
 	// Reverse cummulative sum na przykladzie Eigen-a
-	// note: w komenarzu zaznaczono druga konwencje sumowania skladnikow,
-	// 		 ktore trzeba dodac do odpowiednich watkow
+
 	MatrixXd vec = MatrixXd::Constant(3, N, 1.0);
 	for (int i=1; i<N; i++)
 		vec.col(i) +=  vec.col(i-1);
@@ -57,28 +52,24 @@ int main(void) {
 	MatrixXd res(3, N); res.setZero();
 	Vector3d sum; sum.setZero();
 	omp_set_num_threads(Nthr);
-	MatrixXd suma(3, Nthr);
+	MatrixXd suma(3, Nthr+1);
+	suma.col(0).setZero();
 # pragma omp parallel for schedule(static) firstprivate(sum)
-	for (int i = N - 1; i >= 0; i--) {
+	for (int i = N - 2; i >= 0; i--) {
 		sum += vec.col(i);
 		res.col(i) = sum;
-		suma.col(omp_get_thread_num()) = sum;
-//		suma.col(Nthr-1-omp_get_thread_num()) = sum;
+		suma.col(omp_get_thread_num()+1) = sum;
 	}
-	suma.rightCols(1).setZero();
-	for (int i=Nthr-2; i>=0; i--)
-		suma.col(i) += suma.col(i+1);
-/*	suma.leftCols(1).setZero();
+
 	for (int i=1; i<Nthr; i++)
-		suma.col(i) += suma.col(i-1);*/
+		suma.col(i) += suma.col(i-1);
 
 # pragma omp parallel for schedule(static)
-	for (int i = N - 1; i >= 0; i--) {
-		res.col(i) += suma.col(Nthr-1-omp_get_thread_num());
-//		res.col(i) += suma.col(omp_get_thread_num());
+	for (int i = N - 2; i >= 0; i--) {
+		res.col(i) += suma.col(omp_get_thread_num());
 	}
 
-	cout <<suma <<endl;
-	cout << vec << endl << res << endl;
+	cout <<suma.row(1) <<endl;
+	cout << vec.row(1) << endl << res.row(1) << endl;
 	return 0;
 }
