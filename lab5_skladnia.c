@@ -7,6 +7,7 @@ struct thread_dataSTRUCT {
 	int cnt;
 	int sum;
 	const char* msg;
+    double data_out;
 };
 
 //definicja struktury 2 (typedef)
@@ -14,6 +15,7 @@ typedef struct {
 	int cnt;
 	int sum;
 	const char* msg;
+    double data_out;
 } thread_data;
 
 
@@ -40,10 +42,13 @@ int main() {
 	printf("dlugosc jednego int'a w tablicy: %d bajty \n", sizeof(int));
 	printf("tab+%d przemieszcza sie o %d bajtow w tablicy tab \n", i, i*sizeof(int));
 
-	struktura2.cnt = 5;
+	struktura2.cnt = 4;
 	/*   rzutujemy adres struktury na typ void*   */
 	void* pointer_to_struct = (void*) &struktura2;
 	routine(pointer_to_struct);
+    
+    /* Odczytaj wartosc obliczona w watku */
+    printf("Odebralem wartosc (3*cnt+2): %f", struktura2.data_out);
 
 	return EXIT_SUCCESS;
 }
@@ -54,6 +59,8 @@ void* routine(void* args) {
 	thread_data* args_converted = (thread_data*) args;
 	int cnt = args_converted->cnt;
 	    cnt = (*args_converted).cnt; // dokladnie to samo, co powyzej
+    
+    args_converted->data_out = 3*cnt + 2; // Zwroc wartosc do procesu glownego
 	printf("routine: cnt = %d\n", cnt);
 
 	return NULL;
